@@ -67,23 +67,8 @@ export function AppSidebar({fallbackApp}) {
       <Logo />
 
       <Nav>
-        <NavItem href="/profile" icon="profile">
-          {t('My Idena')}
-        </NavItem>
         <NavItem href="/flips/list" icon="gallery">
           {t('Flips')}
-        </NavItem>
-        <NavItem href="/wallets" icon="wallet">
-          {t('Wallets')}
-        </NavItem>
-        <NavItem href="/contacts" icon="contacts">
-          {t('Contacts')}
-        </NavItem>
-        <NavItem href="/oracles/list" icon="oracle">
-          {t('Oracle voting')}
-        </NavItem>
-        <NavItem href="/settings/general" icon="settings">
-          {t('Settings')}
         </NavItem>
       </Nav>
 
