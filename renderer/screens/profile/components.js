@@ -61,18 +61,14 @@ import {
 import {createTimerMachine} from '../../shared/machines'
 import {usePersistence} from '../../shared/hooks/use-persistent-state'
 import {activateMiningMachine} from './machines'
-import {
-  calculateInvitationRewardRatio,
-  dummyAddress,
-  eitherState,
-  toPercent,
-} from '../../shared/utils/utils'
+import {dummyAddress, eitherState, toPercent} from '../../shared/utils/utils'
 import {useEpochState} from '../../shared/providers/epoch-context'
+import {calculateInvitationRewardRatio} from './utils'
 
-export function UserInlineCard({address, status, ...props}) {
+export function UserInlineCard({status, ...props}) {
   return (
     <Stack isInline spacing={6} align="center" {...props}>
-      <Avatar address={address} />
+      <Avatar address={'0'} />
       <Stack spacing={1}>
         <Heading as="h2" fontSize="lg" fontWeight={500} lineHeight="short">
           {mapToFriendlyStatus(status)}
@@ -84,7 +80,7 @@ export function UserInlineCard({address, status, ...props}) {
           color="muted"
           lineHeight="shorter"
         >
-          {address}
+
         </Heading>
       </Stack>
     </Stack>
@@ -174,6 +170,7 @@ export const ActivateInviteForm = React.forwardRef((props, ref) => {
     <Box
       ref={ref}
       as="form"
+      {...props}
       onSubmit={async e => {
         e.preventDefault()
         try {
@@ -184,7 +181,6 @@ export const ActivateInviteForm = React.forwardRef((props, ref) => {
           })
         }
       }}
-      {...props}
     >
       <Stack spacing={6}>
         <FormControl>
@@ -218,9 +214,8 @@ export const ActivateInviteForm = React.forwardRef((props, ref) => {
               isDisabled={mining || status === IdentityStatus.Invite}
               minH={rem(50)}
               placeholder={
-                status === IdentityStatus.Invite
-                  ? 'Click the button to activate invitation'
-                  : ''
+                status === IdentityStatus.Invite &&
+                'Click the button to activate invitation'
               }
               resize="none"
               _disabled={{

@@ -36,8 +36,9 @@ import {Logo} from '../../screens/app/components'
 import {useVotingNotification} from '../providers/voting-notification-context'
 import {useOnboarding} from '../providers/onboarding-context'
 import {
-  onboardingPromotingStep,
-  onboardingShowingStep,
+  activeOnboardingStep,
+  activeShowingOnboardingStep,
+  onboardingStep,
 } from '../utils/onboarding'
 import {
   OnboardingLinkButton,
@@ -47,7 +48,6 @@ import {
 } from './onboarding'
 import {
   buildNextValidationCalendarLink,
-  eitherState,
   formatValidationDate,
 } from '../utils/utils'
 import {isHardFork} from '../utils/node'
@@ -181,6 +181,9 @@ function Nav() {
           textAlign: 'left',
         }}
       >
+        <NavItem href="/profile" icon={<Icon name="profile" size={5} />}>
+          {t('Profile')}
+        </NavItem>
         <NavItem href="/flips/list" icon={<Icon name="gallery" size={5} />}>
           {t('Flips')}
         </NavItem>
@@ -260,36 +263,33 @@ function ActionPanel() {
   const identity = useIdentityState()
   const epoch = useEpochState()
 
-  const [
-    currentOnboarding,
-    {showCurrentTask, dismissCurrentTask},
-  ] = useOnboarding()
+  const [currentOnboarding, {showCurrentTask, dismiss}] = useOnboarding()
+
+  const shouldActivateInvite = currentOnboarding.matches(
+    activeOnboardingStep(OnboardingStep.ActivateInvite)
+  )
+
+  const shouldValidate = currentOnboarding.matches(
+    activeOnboardingStep(OnboardingStep.Validate)
+  )
+
+  const shouldCreateFlips = currentOnboarding.matches(
+    activeOnboardingStep(OnboardingStep.CreateFlips)
+  )
+
+  const isShowingValidateStep = currentOnboarding.matches(
+    activeShowingOnboardingStep(OnboardingStep.Validate)
+  )
+
+  const shouldActivateMining = currentOnboarding.matches(
+    activeOnboardingStep(OnboardingStep.ActivateMining)
+  )
 
   if (syncing || !epoch) {
     return null
   }
 
   const {currentPeriod, nextValidation} = epoch
-
-  const eitherOnboardingState = (...states) =>
-    eitherState(currentOnboarding, ...states)
-
-  const isPromotingNextOnboardingStep =
-    currentPeriod === EpochPeriod.None &&
-    (eitherOnboardingState(
-      onboardingPromotingStep(OnboardingStep.ActivateInvite),
-      onboardingPromotingStep(OnboardingStep.ActivateMining)
-    ) ||
-      (eitherOnboardingState(
-        onboardingPromotingStep(OnboardingStep.Validate)
-      ) &&
-        [IdentityStatus.Candidate, IdentityStatus.Newbie].includes(
-          identity.state
-        )) ||
-      (eitherOnboardingState(
-        onboardingPromotingStep(OnboardingStep.CreateFlips)
-      ) &&
-        [IdentityStatus.Newbie].includes(identity.state)))
 
   return (
     <Box
@@ -307,22 +307,27 @@ function ActionPanel() {
 
       <ChakraBox
         roundedTop="md"
-        cursor={isPromotingNextOnboardingStep ? 'pointer' : 'default'}
+        cursor={currentOnboarding.matches('done') ? 'default' : 'pointer'}
         onClick={() => {
-          if (
-            eitherOnboardingState(
-              OnboardingStep.ActivateInvite,
-              OnboardingStep.ActivateMining
-            )
-          )
-            router.push('/profile')
-          if (eitherOnboardingState(OnboardingStep.CreateFlips))
-            router.push('/flips/list')
-
+          if (shouldActivateInvite) router.push('/profile')
+          if (shouldCreateFlips) router.push('/flips/list')
+          if (shouldActivateMining) router.push('/profile')
           showCurrentTask()
         }}
       >
-        <PulseFrame isActive={isPromotingNextOnboardingStep}>
+        <PulseFrame
+          isActive={
+            currentPeriod === EpochPeriod.None &&
+            (shouldActivateInvite ||
+              (shouldValidate &&
+                [IdentityStatus.Candidate, IdentityStatus.Newbie].includes(
+                  identity.state
+                )) ||
+              shouldActivateMining ||
+              (shouldCreateFlips &&
+                [IdentityStatus.Newbie].includes(identity.state)))
+          }
+        >
           <Block title={t('My current task')}>
             <CurrentTask
               epoch={epoch.epoch}
@@ -335,19 +340,12 @@ function ActionPanel() {
 
       {currentPeriod === EpochPeriod.None && (
         <>
-          <OnboardingPopover
-            isOpen={eitherOnboardingState(
-              onboardingShowingStep(OnboardingStep.Validate)
-            )}
-            placement="right"
-          >
+          <OnboardingPopover isOpen={isShowingValidateStep} placement="right">
             <PopoverTrigger>
               <ChakraBox
                 roundedBottom="md"
                 bg={
-                  eitherOnboardingState(
-                    onboardingShowingStep(OnboardingStep.Validate)
-                  )
+                  isShowingValidateStep
                     ? 'rgba(216, 216, 216, .1)'
                     : 'transparent'
                 }
@@ -420,7 +418,7 @@ function ActionPanel() {
                   {t('Read more')}
                 </Button>
               }
-              onDismiss={dismissCurrentTask}
+              onDismiss={dismiss}
             >
               <Stack spacing={5}>
                 <OnboardingPopoverContentIconRow icon="telegram">
@@ -529,7 +527,7 @@ function Block({title, children}) {
 function CurrentTask({epoch, period, identity}) {
   const {t} = useTranslation()
 
-  const [currentOnboarding] = useOnboarding()
+  const [onboardingState] = useOnboarding()
 
   if (!period || !identity.state) return null
 
@@ -541,6 +539,8 @@ function CurrentTask({epoch, period, identity}) {
         availableFlips: availableFlipsNumber,
         state: status,
         canActivateInvite,
+        age,
+        online,
       } = identity
 
       switch (true) {
@@ -551,7 +551,11 @@ function CurrentTask({epoch, period, identity}) {
             </Link>
           )
 
-        case currentOnboarding.matches(OnboardingStep.ActivateMining): {
+        case age === 1 &&
+          !online &&
+          onboardingState.matches(
+            onboardingStep(OnboardingStep.ActivateMining)
+          ): {
           return t('Activate mining status')
         }
 

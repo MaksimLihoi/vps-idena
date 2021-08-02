@@ -5,7 +5,8 @@ import {
   loadPersistentState,
   loadPersistentStateValue,
 } from '../../shared/utils/persist'
-import {EpochPeriod, IdentityStatus} from '../../shared/types'
+import {EpochPeriod} from '../../shared/types'
+import {canValidate} from '../../shared/providers/identity-context'
 
 export const readyFlip = ({ready}) => ready
 
@@ -223,29 +224,4 @@ export const decodedWithKeywords = ({decoded, words}) =>
 
 export function availableReportsNumber(flips) {
   return Math.floor(flips.length / 3)
-}
-
-export function canValidate(identity) {
-  if (!identity) {
-    return false
-  }
-
-  const {requiredFlips, flips, state} = identity
-
-  const numOfFlipsToSubmit = requiredFlips - (flips || []).length
-  const shouldSendFlips = numOfFlipsToSubmit > 0
-
-  return (
-    ([
-      IdentityStatus.Human,
-      IdentityStatus.Verified,
-      IdentityStatus.Newbie,
-    ].includes(state) &&
-      !shouldSendFlips) ||
-    [
-      IdentityStatus.Candidate,
-      IdentityStatus.Suspended,
-      IdentityStatus.Zombie,
-    ].includes(state)
-  )
 }

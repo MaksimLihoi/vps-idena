@@ -49,7 +49,7 @@ export default function Index() {
   return (
     <Layout syncing={syncing} offline={offline}>
       <Page>
-        <PageTitle>{t('Dima Rogozenko')}</PageTitle>
+        <PageTitle>{t('Wallets')}</PageTitle>
         <Box>
           {status === 'fetching' && (
             <FillCenter>

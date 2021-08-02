@@ -21,7 +21,6 @@ import {
 } from '../../shared/providers/identity-context'
 import {
   byId,
-  calculateInvitationRewardRatio,
   dummyAddress,
   toLocaleDna,
   toPercent,
@@ -35,7 +34,6 @@ import {
   DrawerBody,
   DrawerFooter,
   Tooltip,
-  SmallText,
 } from '../../shared/components/components'
 import {
   useInvite,
@@ -49,8 +47,10 @@ import {
   ContactDrawerHeader,
   ContactStat,
 } from './components'
+import {SmallText} from '../oracles/components'
 import {useEpochState} from '../../shared/providers/epoch-context'
 import {useChainState} from '../../shared/providers/chain-context'
+import {calculateInvitationRewardRatio} from '../profile/utils'
 import {useSuccessToast} from '../../shared/hooks/use-toast'
 import {IdentityStatus} from '../../shared/types'
 

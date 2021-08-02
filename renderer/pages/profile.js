@@ -70,12 +70,18 @@ import {
   OnboardingPopover,
   OnboardingPopoverContent,
   OnboardingPopoverContentIconRow,
+  TaskConfetti,
 } from '../shared/components/onboarding'
 import {useOnboarding} from '../shared/providers/onboarding-context'
-import {onboardingShowingStep} from '../shared/utils/onboarding'
+import {
+  doneOnboardingStep,
+  activeShowingOnboardingStep,
+  shouldCompleteOnboardingStep,
+  shouldTransitionToCreateFlipsStep,
+} from '../shared/utils/onboarding'
 import {createProfileDb} from '../screens/profile/utils'
 import {ExportPrivateKeyDialog} from '../screens/settings/containers'
-import {useScroll} from '../shared/hooks/use-scroll'
+import {FillCenter} from '../screens/oracles/components'
 
 export default function ProfilePage() {
   const {
@@ -115,6 +121,8 @@ export default function ProfilePage() {
     delegatee,
     delegationEpoch,
     isValidated,
+    flips,
+    requiredFlips,
   } = useIdentityState()
 
   const epoch = useEpochState()
@@ -158,11 +166,61 @@ export default function ProfilePage() {
 
   const [
     currentOnboarding,
-    {dismissCurrentTask, next: nextOnboardingTask},
+    {done: doneStep, dismiss: dismissStep, finish: finishOnboarding},
   ] = useOnboarding()
 
-  const eitherOnboardingState = (...states) =>
-    eitherState(currentOnboarding, ...states)
+  React.useEffect(() => {
+    if (
+      status === IdentityStatus.Candidate &&
+      shouldCompleteOnboardingStep(
+        currentOnboarding,
+        OnboardingStep.ActivateInvite
+      )
+    ) {
+      doneStep()
+    }
+  }, [currentOnboarding, doneStep, status])
+
+  React.useEffect(() => {
+    if (
+      isValidated &&
+      shouldCompleteOnboardingStep(currentOnboarding, OnboardingStep.Validate)
+    ) {
+      doneStep()
+    }
+  }, [currentOnboarding, doneStep, isValidated])
+
+  React.useEffect(() => {
+    if (
+      online &&
+      shouldCompleteOnboardingStep(
+        currentOnboarding,
+        OnboardingStep.ActivateMining
+      )
+    ) {
+      if (
+        shouldTransitionToCreateFlipsStep({isValidated, requiredFlips, flips})
+      )
+        doneStep()
+      else finishOnboarding()
+    }
+  }, [
+    currentOnboarding,
+    doneStep,
+    finishOnboarding,
+    flips,
+    isValidated,
+    online,
+    requiredFlips,
+  ])
+
+  const isShowingActivateMiningPopover = currentOnboarding.matches(
+    activeShowingOnboardingStep(OnboardingStep.ActivateMining)
+  )
+
+  const isShowingActivateInvitePopover = currentOnboarding.matches(
+    activeShowingOnboardingStep(OnboardingStep.ActivateInvite)
+  )
 
   const toDna = toLocaleDna(language)
 
@@ -178,25 +236,21 @@ export default function ProfilePage() {
     onClose: onCloseActivateInvitePopover,
   } = useDisclosure()
 
-  const activateInviteRef = React.useRef()
-
-  const {scrollTo: scrollToActivateInvite} = useScroll(activateInviteRef)
-
-  React.useEffect(() => {
-    if (
-      eitherState(
-        currentOnboarding,
-        onboardingShowingStep(OnboardingStep.ActivateInvite)
-      )
-    ) {
-      scrollToActivateInvite()
+  React.useLayoutEffect(() => {
+    if (isShowingActivateInvitePopover) {
+      document
+        .querySelectorAll('#__next section')[1]
+        .querySelector('div')
+        .scroll({
+          left: 0,
+          top: 9999,
+        })
       onOpenActivateInvitePopover()
     } else onCloseActivateInvitePopover()
   }, [
-    currentOnboarding,
+    isShowingActivateInvitePopover,
     onCloseActivateInvitePopover,
     onOpenActivateInvitePopover,
-    scrollToActivateInvite,
   ])
 
   return (
@@ -217,77 +271,8 @@ export default function ProfilePage() {
               </Stack>
               <Stack isInline spacing={10}>
                 <Stack spacing={6} w="md">
-                  <UserInlineCard address={address} status={status} h={24} />
+                  <UserInlineCard status={status} h={24} />
                   <UserStatList>
-                    <UserStat>
-                      <UserStatLabel>{t('Address')}</UserStatLabel>
-                      <UserStatValue>{address}</UserStatValue>
-                      <ExternalLink
-                        href={`https://scan.idena.io/address/${address}`}
-                      >
-                        {t('Open in blockhain explorer')}
-                      </ExternalLink>
-                    </UserStat>
-
-                    {status === IdentityStatus.Newbie ? (
-                      <AnnotatedUserStat
-                        annotation={t(
-                          'Solve more than 12 flips to become Verified'
-                        )}
-                        label={t('Status')}
-                        value={mapToFriendlyStatus(status)}
-                      />
-                    ) : (
-                      <SimpleUserStat
-                        label={t('Status')}
-                        value={mapToFriendlyStatus(status)}
-                      />
-                    )}
-
-                    <SimpleUserStat
-                      label={t('Balance')}
-                      value={toDna(balance)}
-                    />
-
-                    {stake > 0 && status === IdentityStatus.Newbie && (
-                      <Stack spacing={4}>
-                        <AnnotatedUserStat
-                          annotation={t(
-                            'You need to get Verified status to be able to terminate your identity and withdraw the stake'
-                          )}
-                          label={t('Stake')}
-                          value={toDna(stake * 0.25)}
-                        />
-                        <AnnotatedUserStat
-                          annotation={t(
-                            'You need to get Verified status to get the locked funds into the normal wallet'
-                          )}
-                          label={t('Locked')}
-                          value={toDna(stake * 0.75)}
-                        />
-                      </Stack>
-                    )}
-
-                    {stake > 0 && status !== IdentityStatus.Newbie && (
-                      <AnnotatedUserStat
-                        annotation={t(
-                          'In order to withdraw the stake you have to terminate your identity'
-                        )}
-                        label={t('Stake')}
-                        value={toDna(stake)}
-                      />
-                    )}
-
-                    {penalty > 0 && (
-                      <AnnotatedUserStat
-                        annotation={t(
-                          "Your node was offline more than 1 hour. The penalty will be charged automatically. Once it's fully paid you'll continue to mine coins."
-                        )}
-                        label={t('Mining penalty')}
-                        value={toDna(penalty)}
-                      />
-                    )}
-
                     {age >= 0 && (
                       <SimpleUserStat label={t('Age')} value={age} />
                     )}
@@ -326,15 +311,13 @@ export default function ProfilePage() {
                     placement="top-start"
                   >
                     <PopoverTrigger>
-                      <Box zIndex={2}>
-                        <ActivateInviteForm ref={activateInviteRef} />
-                      </Box>
+                      <ActivateInviteForm zIndex={2} />
                     </PopoverTrigger>
                     <OnboardingPopoverContent
                       title={t('Enter invitation code')}
                       zIndex={2}
                       onDismiss={() => {
-                        dismissCurrentTask()
+                        dismissStep()
                         onCloseActivateInvitePopover()
                       }}
                     >
@@ -374,23 +357,37 @@ export default function ProfilePage() {
                       </Stack>
                     </OnboardingPopoverContent>
                   </OnboardingPopover>
+                  <FillCenter
+                    position="absolute"
+                    top="50%"
+                    left="50%"
+                    zIndex={9999}
+                  >
+                    <TaskConfetti
+                      active={
+                        eitherState(
+                          currentOnboarding,
+                          `${doneOnboardingStep(
+                            OnboardingStep.ActivateInvite
+                          )}.salut`
+                        ) ||
+                        (eitherState(
+                          currentOnboarding,
+                          `${doneOnboardingStep(OnboardingStep.Validate)}.salut`
+                        ) &&
+                          status === IdentityStatus.Newbie)
+                      }
+                    />
+                  </FillCenter>
                 </Stack>
                 <Stack spacing={10} w={rem(200)}>
                   <Box minH={62} mt={4}>
-                    <OnboardingPopover
-                      isOpen={eitherOnboardingState(
-                        onboardingShowingStep(OnboardingStep.ActivateMining)
-                      )}
-                    >
+                    <OnboardingPopover isOpen={isShowingActivateMiningPopover}>
                       <PopoverTrigger>
                         <Box
                           bg="white"
                           position={
-                            eitherOnboardingState(
-                              onboardingShowingStep(
-                                OnboardingStep.ActivateMining
-                              )
-                            )
+                            isShowingActivateMiningPopover
                               ? 'relative'
                               : 'initial'
                           }
@@ -398,20 +395,21 @@ export default function ProfilePage() {
                           p={2}
                           m={-2}
                           zIndex={2}
-                        >
-                          {address && canMine && (
-                            <ActivateMiningForm
-                              isOnline={online}
-                              delegatee={delegatee}
-                              delegationEpoch={delegationEpoch}
-                              onShow={nextOnboardingTask}
-                            />
-                          )}
-                        </Box>
+                        ></Box>
                       </PopoverTrigger>
                       <OnboardingPopoverContent
                         title={t('Activate mining status')}
-                        onDismiss={nextOnboardingTask}
+                        onDismiss={() => {
+                          if (
+                            shouldTransitionToCreateFlipsStep({
+                              isValidated,
+                              requiredFlips,
+                              flips,
+                            })
+                          )
+                            doneStep()
+                          else finishOnboarding()
+                        }}
                       >
                         <Text>
                           {t(
@@ -421,92 +419,15 @@ export default function ProfilePage() {
                       </OnboardingPopoverContent>
                     </OnboardingPopover>
                   </Box>
-                  <Stack spacing={1} align="flex-start">
-                    <IconLink
-                      href="/oracles/new"
-                      icon={<Icon name="oracle" size={5} />}
-                    >
-                      {t('New voting')}
-                    </IconLink>
-                    <IconLink
-                      href="/flips/new"
-                      icon={<Icon name="photo" size={5} />}
-                    >
-                      {t('New flip')}
-                    </IconLink>
-                    <IconLink
-                      href="/contacts?new"
-                      isDisabled={!canInvite}
-                      icon={<Icon name="add-user" size={5} />}
-                    >
-                      {t('Invite')}
-                    </IconLink>
-                    <IconButton2 icon="poo" onClick={onOpenSpoilForm}>
-                      {t('Spoil invite')}
-                    </IconButton2>
-                    <IconButton2 icon="key" onClick={onOpenExportPk}>
-                      {t('Backup private key')}
-                    </IconButton2>
-                    <IconButton2
-                      isDisabled={!canTerminate}
-                      icon="delete"
-                      onClick={onOpenKillForm}
-                    >
-                      {t('Terminate')}
-                    </IconButton2>
-                  </Stack>
                 </Stack>
               </Stack>
             </Stack>
-            <KillIdentityDrawer
-              address={address}
-              isOpen={isOpenKillForm}
-              onClose={onCloseKillForm}
-            >
-              <KillForm onSuccess={onCloseKillForm} onFail={onCloseKillForm} />
-            </KillIdentityDrawer>
-
-            <SpoilInviteDrawer
-              isOpen={isOpenSpoilForm}
-              onClose={onCloseSpoilForm}
-            >
-              <SpoilInviteForm
-                onSpoil={async key => {
-                  try {
-                    await callRpc('dna_activateInviteToRandAddr', {key})
-
-                    toast({
-                      status: 'success',
-                      // eslint-disable-next-line react/display-name
-                      render: () => (
-                        <Toast
-                          title={t('Invitation is successfully spoiled')}
-                        />
-                      ),
-                    })
-                    onCloseSpoilForm()
-                  } catch {
-                    toast({
-                      // eslint-disable-next-line react/display-name
-                      render: () => (
-                        <Toast
-                          title={t('Invitation is missing')}
-                          status="error"
-                        />
-                      ),
-                    })
-                  }
-                }}
-              />
-            </SpoilInviteDrawer>
-
             {showValidationResults && (
               <ValidationResultToast epoch={epoch.epoch} />
             )}
           </Page>
         </Layout>
       </InviteProvider>
-
       <Dialog
         isOpen={isOpenNextValidationDialog}
         onClose={onCloseNextValidationDialog}

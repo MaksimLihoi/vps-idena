@@ -67,6 +67,9 @@ export function AppSidebar({fallbackApp}) {
       <Logo />
 
       <Nav>
+        <NavItem href="/profile" icon="profile">
+          {t('Profile')}
+        </NavItem>
         <NavItem href="/flips/list" icon="gallery">
           {t('Flips')}
         </NavItem>

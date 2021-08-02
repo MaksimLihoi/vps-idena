@@ -1,10 +1,20 @@
-/* eslint-disable react/prop-types */
 import React, {useCallback} from 'react'
 import deepEqual from 'dequal'
 import {useInterval} from '../hooks/use-interval'
 import {fetchIdentity, killIdentity} from '../api'
 import useRpc from '../hooks/use-rpc'
-import {IdentityStatus} from '../types'
+
+export const IdentityStatus = {
+  Undefined: 'Undefined',
+  Invite: 'Invite',
+  Candidate: 'Candidate',
+  Newbie: 'Newbie',
+  Verified: 'Verified',
+  Suspended: 'Suspended',
+  Zombie: 'Zombie',
+  Terminating: 'Terminating',
+  Human: 'Human',
+}
 
 export function mapToFriendlyStatus(status) {
   switch (status) {
@@ -18,7 +28,8 @@ export function mapToFriendlyStatus(status) {
 const IdentityStateContext = React.createContext()
 const IdentityDispatchContext = React.createContext()
 
-export function IdentityProvider({children}) {
+// eslint-disable-next-line react/prop-types
+function IdentityProvider({children}) {
   const [identity, setIdentity] = React.useState(null)
   const [{result: balanceResult}, callRpc] = useRpc()
 
@@ -95,6 +106,18 @@ export function IdentityProvider({children}) {
     identity.requiredFlips > 0 &&
     (identity.flips || []).length < identity.availableFlips
 
+  // eslint-disable-next-line no-shadow
+  const canValidate =
+    identity &&
+    [
+      IdentityStatus.Candidate,
+      IdentityStatus.Newbie,
+      IdentityStatus.Verified,
+      IdentityStatus.Suspended,
+      IdentityStatus.Zombie,
+      IdentityStatus.Human,
+    ].includes(identity.state)
+
   const canTerminate =
     identity &&
     [
@@ -134,6 +157,7 @@ export function IdentityProvider({children}) {
         balance: balanceResult && balanceResult.balance,
         canActivateInvite,
         canSubmitFlip,
+        canValidate,
         canMine,
         canTerminate,
         isValidated: [
@@ -151,7 +175,7 @@ export function IdentityProvider({children}) {
   )
 }
 
-export function useIdentityState() {
+function useIdentityState() {
   const context = React.useContext(IdentityStateContext)
   if (context === undefined) {
     throw new Error('useIdentityState must be used within a IdentityProvider')
@@ -159,7 +183,7 @@ export function useIdentityState() {
   return context
 }
 
-export function useIdentityDispatch() {
+function useIdentityDispatch() {
   const context = React.useContext(IdentityDispatchContext)
   if (context === undefined) {
     throw new Error(
@@ -169,6 +193,29 @@ export function useIdentityDispatch() {
   return context
 }
 
-export function useIdentity() {
-  return [useIdentityState(), useIdentityDispatch()]
+export function canValidate(identity) {
+  if (!identity) {
+    return false
+  }
+
+  const {requiredFlips, flips, state} = identity
+
+  const numOfFlipsToSubmit = requiredFlips - (flips || []).length
+  const shouldSendFlips = numOfFlipsToSubmit > 0
+
+  return (
+    ([
+      IdentityStatus.Human,
+      IdentityStatus.Verified,
+      IdentityStatus.Newbie,
+    ].includes(state) &&
+      !shouldSendFlips) ||
+    [
+      IdentityStatus.Candidate,
+      IdentityStatus.Suspended,
+      IdentityStatus.Zombie,
+    ].includes(state)
+  )
 }
+
+export {IdentityProvider, useIdentityState, useIdentityDispatch}
