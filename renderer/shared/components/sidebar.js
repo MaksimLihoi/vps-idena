@@ -76,9 +76,6 @@ function Sidebar() {
         <Nav />
         <ActionPanel />
       </Flex>
-      <ChakraBox>
-        <Version />
-      </ChakraBox>
     </ChakraFlex>
   )
 }
@@ -706,80 +703,6 @@ function UpdateButton({text, version, ...props}) {
 UpdateButton.propTypes = {
   text: PropTypes.string,
   version: PropTypes.string,
-}
-
-export function Version() {
-  const autoUpdate = useAutoUpdateState()
-  const {
-    updateClient,
-    updateNode,
-    onResetHardForkVoing,
-  } = useAutoUpdateDispatch()
-
-  return (
-    <>
-      <Box
-        css={{
-          ...margin(rem(theme.spacings.small8)),
-        }}
-      >
-        <Flex direction="column">
-          <Text
-            color={theme.colors.white05}
-            fontWeight={500}
-            css={{lineHeight: rem(20)}}
-          >
-            Client version: {global.appVersion}
-          </Text>
-          <Text
-            color={theme.colors.white05}
-            fontWeight={500}
-            css={{lineHeight: rem(20)}}
-          >
-            Node version: {autoUpdate.nodeCurrentVersion}
-          </Text>
-        </Flex>
-      </Box>
-      <Box
-        css={{
-          ...margin(0, 0, rem(theme.spacings.small8)),
-        }}
-      >
-        {autoUpdate.nodeUpdating && (
-          <Text
-            color={theme.colors.white05}
-            css={{...margin(0, rem(theme.spacings.small8), 0)}}
-          >
-            Updating Node...
-          </Text>
-        )}
-        {autoUpdate.canUpdateClient ? (
-          <UpdateButton
-            text="Update Client Version"
-            version={autoUpdate.uiRemoteVersion}
-            onClick={updateClient}
-          />
-        ) : null}
-        {!autoUpdate.canUpdateClient &&
-        autoUpdate.canUpdateNode &&
-        (!autoUpdate.nodeProgress ||
-          autoUpdate.nodeProgress.percentage === 100) ? (
-          <UpdateButton
-            text="Update Node Version"
-            version={autoUpdate.nodeRemoteVersion}
-            onClick={
-              isHardFork(
-                autoUpdate.nodeCurrentVersion,
-                autoUpdate.nodeRemoteVersion
-              )
-                ? onResetHardForkVoing
-                : updateNode
-            }
-          />
-        ) : null}
-      </Box>
-    </>
-  )
 }
 
 // eslint-disable-next-line react/prop-types
