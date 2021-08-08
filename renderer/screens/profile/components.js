@@ -65,10 +65,10 @@ import {dummyAddress, eitherState, toPercent} from '../../shared/utils/utils'
 import {useEpochState} from '../../shared/providers/epoch-context'
 import {calculateInvitationRewardRatio} from './utils'
 
-export function UserInlineCard({status, ...props}) {
+export function UserInlineCard({address, status, ...props}) {
   return (
     <Stack isInline spacing={6} align="center" {...props}>
-      <Avatar address={'0'} />
+      <Avatar address={address} />
       <Stack spacing={1}>
         <Heading as="h2" fontSize="lg" fontWeight={500} lineHeight="short">
           {mapToFriendlyStatus(status)}
@@ -80,7 +80,7 @@ export function UserInlineCard({status, ...props}) {
           color="muted"
           lineHeight="shorter"
         >
-
+          {address}
         </Heading>
       </Stack>
     </Stack>

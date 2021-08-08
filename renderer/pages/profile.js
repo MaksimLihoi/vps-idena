@@ -271,7 +271,7 @@ export default function ProfilePage() {
               </Stack>
               <Stack isInline spacing={10}>
                 <Stack spacing={6} w="md">
-                  <UserInlineCard status={status} h={24} />
+                  <UserInlineCard address={address} status={status} h={24} />
                   <UserStatList>
                     {age >= 0 && (
                       <SimpleUserStat label={t('Age')} value={age} />
